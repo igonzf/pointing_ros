@@ -1,0 +1,3 @@
+[submodule "pointing_ros/yolov8_ros"]
+	path = pointing_ros/yolov8_ros
+	url = https://github.com/mgonzs13/yolov8_ros.git
