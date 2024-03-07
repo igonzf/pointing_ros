@@ -43,13 +43,13 @@ def generate_launch_description():
     input_image_topic = LaunchConfiguration("input_image_topic")
     input_image_topic_cmd = DeclareLaunchArgument(
         "input_image_topic",
-        default_value="/xtion/rgb/image_raw",
+        default_value="/camera/rgb/image_raw",
         description="Name of the input image topic")
 
     camera_info_topic = LaunchConfiguration("camera_info_topic")
     camera_info_topic_cmd = DeclareLaunchArgument(
         "camera_info_topic",
-        default_value="/xtion/rgb/camera_info",
+        default_value="/camera/rgb/camera_info",
         description="Name of the camera info topic")
     
     pointcloud_topic = LaunchConfiguration("pointcloud_topic")
@@ -100,7 +100,6 @@ def generate_launch_description():
         namespace=namespace,
         remappings=[("detections_3d", person_detections_topic),
                     ("object_detections_3d", object_pointed_detections_topic), 
-                    ("depth_points", pointcloud_topic), 
                     ("camera_info", camera_info_topic)]
     )
 
