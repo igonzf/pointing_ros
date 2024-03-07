@@ -46,7 +46,13 @@ def calculate_plane_eq (p1, p2, p3):
 def calculate_line_plane_intersection(p1, p2, plane_eq):
     a, b, c, d = plane_eq
     u = p2 - p1
-    t = (-d - np.dot(np.array([a, b, c], p1)) / np.dot(np.array([a, b, c]), u))
+    denominator = np.dot(np.array([a, b, c]), u)
+    if np.abs(denominator) < 1e-6:
+        return None
+    
+    numerator = -d - np.dot(np.array([a, b, c]), p1)
+    t = numerator / denominator
+
     intersection_point = p1 + t * u
 
     return intersection_point
