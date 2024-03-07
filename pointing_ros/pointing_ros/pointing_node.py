@@ -122,6 +122,11 @@ class PointingNode(Node):
                             p2 = np.array([marker.points[1].x, marker.points[1].y, marker.points[1].z])
                             if is_intersection(p1, p2, bbox_faces):
                                 self.get_logger().info(f'PERSON POINTED TO THE BAG ID: {detection.id}')
+                                
+                                pointing_msg = Pointing()
+                                pointing_msg.src = human_pose
+                                pointing_msg.object = detection
+                                self._pointing_pub.publish(pointing_msg)
                         
                         self._markers_pub.publish(direction_marker_array)
 
