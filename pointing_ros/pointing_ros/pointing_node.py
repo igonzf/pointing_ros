@@ -2,10 +2,14 @@
 import math
 
 import numpy as np
+from typing import List, Tuple, Optional
 from array import *
 import rclpy
 from rclpy.qos import qos_profile_sensor_data
-from rclpy.node import Node
+from rclpy.lifecycle import Node
+from rclpy.lifecycle import Publisher
+from rclpy.lifecycle import State
+from rclpy.lifecycle import TransitionCallbackReturn
 from cv_bridge import CvBridge
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs.msg import CameraInfo
@@ -14,16 +18,23 @@ from pointing_msgs.msg import Pointing
 from yolov8_msgs.msg import KeyPoint3DArray
 from yolov8_msgs.msg import DetectionArray
 from yolov8_msgs.msg import BoundingBox3D
+from rclpy_cascade_lifecycle.cascade_lifecycle_node import CascadeLifecycleNode
 from .rviz_makers import create_3d_pointing_ray, create_marker_point
 from .calculate_functions import calculate_bbox_v, calculate_bbox_faces, is_intersection
 
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 
-class PointingNode(Node):
+class PointingNode(CascadeLifecycleNode):
 
     def __init__(self) -> None:
         super().__init__("pointing_node")
+        self.__markers_pub: Optional[Publisher] = None
+        self._v_markers_pub: Optional[Publisher] = None
+        self._pointing_pub: Optional[Publisher] = None
 
+    def on_configure(self, state: State) -> TransitionCallbackReturn:
+        self.get_logger().info(f'Configuring from {state.label} state...')
+        
         self.right_arm_index = [6, 8, 10]
         self.left_arm_index = [5, 7, 9]
         self.right_arm_xyz = []
@@ -31,12 +42,17 @@ class PointingNode(Node):
         self._class_to_color = {}
         self.cv_bridge = CvBridge()
 
-        # topics
-        self._markers_pub = self.create_publisher(MarkerArray, "markers", 10)
-        self._v_markers_pub = self.create_publisher(MarkerArray, "v_markers", 10)
-        self._pointing_pub = self.create_publisher(Pointing, "pointing", 10)
+        # pubs
+        self._markers_pub = self.create_lifecycle_publisher(MarkerArray, "markers", 10)
+        self._v_markers_pub = self.create_lifecycle_publisher(MarkerArray, "v_markers", 10)
+        self._pointing_pub = self.create_lifecycle_publisher(Pointing, "pointing", 10)
         
-
+        return TransitionCallbackReturn.SUCCESS
+    
+    def on_activate(self, state: State) -> TransitionCallbackReturn:
+        self.get_logger().info(f'Activating from {state.label} state...')
+        
+        # subs
         self._detections_3d_sub = Subscriber(
             self, DetectionArray, "detections_3d"
         )
@@ -49,6 +65,31 @@ class PointingNode(Node):
         
         tss = ApproximateTimeSynchronizer([ self._object_detections_sub, self._detections_3d_sub], 30, 0.1)
         tss.registerCallback(self.pointing_cb)
+
+        return super().on_activate(state)
+    
+    def on_deactivate(self, state: State) -> TransitionCallbackReturn:
+        self.get_logger().info(f'Deactivating from {state.label} state...')
+
+        return super().on_deactivate(state)
+    
+    def on_cleanup(self, state: State) -> TransitionCallbackReturn:
+        self.get_logger().info(f'Cleaning up from {state.label} state...')
+
+        self.destroy_publisher(self._markers_pub)
+        self.destroy_publisher(self._v_markers_pub)
+        self.destroy_publisher(self._pointing_pub)
+
+        return super().on_cleanup(state)
+    
+    def on_shutdown(self, state: State) -> TransitionCallbackReturn:
+        self.get_logger().info(f'Shutting down from {state.label} state...')
+
+        self.destroy_publisher(self._markers_pub)
+        self.destroy_publisher(self._v_markers_pub)
+        self.destroy_publisher(self._pointing_pub)
+
+        return super().on_shutdown(state)
 
     def get_right_arm(self, keypoint_array) -> KeyPoint3DArray:
         right_arm = []
@@ -98,7 +139,7 @@ class PointingNode(Node):
 
                         direction_marker_array = MarkerArray()
                         marker = create_3d_pointing_ray('base_link', right_arm_xyz)
-                        marker.id = len(direction_marker_array.markers)
+                        marker.id = lben(direction_marker_array.markers)
                         direction_marker_array.markers.append(marker)
                         
                         
